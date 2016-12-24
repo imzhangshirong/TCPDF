@@ -1,7 +1,7 @@
 <?php
 //============================================================+
 // File name   : tcpdf.php
-// Version     : 6.2.13
+// Version     : 6.2.12
 // Begin       : 2002-08-03
 // Last Update : 2015-06-18
 // Author      : Nicola Asuni - Tecnick.com LTD - www.tecnick.com - info@tecnick.com
@@ -653,7 +653,7 @@ class TCPDF {
 	 * @protected
 	 */
 	protected $header_string = '';
-
+	protected $footer_string = '';
 	/**
 	 * Color for header text (RGB array).
 	 * @since 5.9.174 (2012-07-25)
@@ -674,6 +674,7 @@ class TCPDF {
 	 * @protected
 	 */
 	protected $footer_text_color = array(0,0,0);
+	protected $footer_string_color = array(0,0,0);
 
 	/**
 	 * Color for footer line (RGB array).
@@ -3269,7 +3270,9 @@ class TCPDF {
 	 * @param $lc (array) RGB array color for line.
 	 * @public
 	 */
-	public function setFooterData($tc=array(0,0,0), $lc=array(0,0,0)) {
+	public function setFooterData($fs="",$sc=array(0,0,0),$tc=array(0,0,0), $lc=array(0,0,0)) {
+		$this->footer_string = $fs;
+		$this->footer_string_color = $sc;
 		$this->footer_text_color = $tc;
 		$this->footer_line_color = $lc;
 	}
@@ -3468,7 +3471,7 @@ class TCPDF {
 	 */
 	public function Footer() {
 		$cur_y = $this->y;
-		$this->SetTextColorArray($this->footer_text_color);
+		
 		//set style for cell border
 		$line_width = (0.85 / $this->k);
 		$this->SetLineStyle(array('width' => $line_width, 'cap' => 'butt', 'join' => 'miter', 'dash' => 0, 'color' => $this->footer_line_color));
@@ -3493,16 +3496,20 @@ class TCPDF {
 		}
 		$w_page = isset($this->l['w_page']) ? $this->l['w_page'].' ' : '';
 		if (empty($this->pagegroups)) {
-			$pagenumtxt = $w_page.$this->getAliasNumPage().' / '.$this->getAliasNbPages();
+			$pagenumtxt = $this->getAliasNumPage();//.' / '.$this->getAliasNbPages();
 		} else {
-			$pagenumtxt = $w_page.$this->getPageNumGroupAlias().' / '.$this->getPageGroupAlias();
+			$pagenumtxt = $this->getPageNumGroupAlias();//.' / '.$this->getPageGroupAlias();
 		}
 		$this->SetY($cur_y);
 		//Print page number
 		if ($this->getRTL()) {
+			$this->SetTextColorArray($this->footer_text_color);
 			$this->SetX($this->original_rMargin);
 			$this->Cell(0, 0, $pagenumtxt, 'T', 0, 'L');
 		} else {
+			$this->SetTextColorArray($this->footer_string_color);
+			$this->Cell(0, 0, $this->footer_string, 'T', 0, 'L');
+			$this->SetTextColorArray($this->footer_text_color);
 			$this->SetX($this->original_lMargin);
 			$this->Cell(0, 0, $this->getAliasRightShift().$pagenumtxt, 'T', 0, 'R');
 		}
@@ -13577,9 +13584,9 @@ class TCPDF {
 		$rep = str_repeat(' ', $this->GetNumChars($ref));
 		$wrep = $this->GetStringWidth($rep);
 		if ($wrep > 0) {
-			$wdiff = max(1, ($this->GetStringWidth($ref) / $wrep));
+			$wdiff = max(2, ($this->GetStringWidth($ref) / $wrep));
 		} else {
-			$wdiff = 1;
+			$wdiff = 2;
 		}
 		$sdiff = sprintf('%F', $wdiff);
 		$alias = TCPDF_STATIC::$alias_right_shift.$sdiff.'}';
@@ -17188,7 +17195,7 @@ Putting 1 is equivalent to putting 0 and calling Ln() just after. Default value:
 		$prev_listordered = $this->listordered;
 		$prev_listcount = $this->listcount;
 		$prev_lispacer = $this->lispacer;
-		$this->listnum = 0;
+		$this->listnum = 1;
 		$this->listordered = array();
 		$this->listcount = array();
 		$this->lispacer = '';
@@ -17221,6 +17228,7 @@ Putting 1 is equivalent to putting 0 and calling Ln() just after. Default value:
 					// add a page (or trig AcceptPageBreak() for multicolumn mode)
 					$this->checkPageBreak($this->PageBreakTrigger + 1);
 					$this->htmlvspace = ($this->PageBreakTrigger + 1);
+					
 				}
 				if ((($dom[$key]['attribute']['pagebreak'] == 'left') AND (((!$this->rtl) AND (($this->page % 2) == 0)) OR (($this->rtl) AND (($this->page % 2) != 0))))
 					OR (($dom[$key]['attribute']['pagebreak'] == 'right') AND (((!$this->rtl) AND (($this->page % 2) != 0)) OR (($this->rtl) AND (($this->page % 2) == 0))))) {
@@ -17364,12 +17372,14 @@ Putting 1 is equivalent to putting 0 and calling Ln() just after. Default value:
 								$startliney = $this->y;
 							}
 						}
+						
 						if ($this->page > $startlinepage) {
 							// fix line splitted over two pages
 							if (isset($this->footerlen[$startlinepage])) {
 								$curpos = $this->pagelen[$startlinepage] - $this->footerlen[$startlinepage];
 							}
 							// line to be moved one page forward
+							
 							$pagebuff = $this->getPageBuffer($startlinepage);
 							$linebeg = substr($pagebuff, $startlinepos, ($curpos - $startlinepos));
 							$tstart = substr($pagebuff, 0, $startlinepos);
@@ -17414,6 +17424,7 @@ Putting 1 is equivalent to putting 0 and calling Ln() just after. Default value:
 					}
 				} elseif (isset($dom[$key]['fontname']) OR isset($dom[$key]['fontstyle']) OR isset($dom[$key]['fontsize']) OR isset($dom[$key]['line-height'])) {
 					// account for different font size
+					
 					$pfontname = $curfontname;
 					$pfontstyle = $curfontstyle;
 					$pfontsize = $curfontsize;
@@ -17434,23 +17445,29 @@ Putting 1 is equivalent to putting 0 and calling Ln() just after. Default value:
 							)) {
 							if ($this->page > $startlinepage) {
 								// fix lines splitted over two pages
+								/*
 								if (isset($this->footerlen[$startlinepage])) {
 									$curpos = $this->pagelen[$startlinepage] - $this->footerlen[$startlinepage];
 								}
+								
 								// line to be moved one page forward
 								$pagebuff = $this->getPageBuffer($startlinepage);
 								$linebeg = substr($pagebuff, $startlinepos, ($curpos - $startlinepos));
 								$tstart = substr($pagebuff, 0, $startlinepos);
 								$tend = substr($this->getPageBuffer($startlinepage), $curpos);
+								
 								// remove line start from previous page
 								$this->setPageBuffer($startlinepage, $tstart.''.$tend);
 								$pagebuff = $this->getPageBuffer($this->page);
 								$tstart = substr($pagebuff, 0, $this->cntmrk[$this->page]);
 								$tend = substr($pagebuff, $this->cntmrk[$this->page]);
+								
 								// add line start to current page
 								$yshift = ($minstartliney - $this->y);
 								$try = sprintf('1 0 0 1 0 %F cm', ($yshift * $this->k));
 								$this->setPageBuffer($this->page, $tstart."\nq\n".$try."\n".$linebeg."\nQ\n".$tend);
+								*/
+								//修复分页重复叠加
 								// shift the annotations and links
 								if (isset($this->PageAnnots[$this->page])) {
 									$next_pask = count($this->PageAnnots[$this->page]);
@@ -17471,6 +17488,7 @@ Putting 1 is equivalent to putting 0 and calling Ln() just after. Default value:
 								$startlinepos = $this->cntmrk[$this->page];
 								$startlinepage = $this->page;
 								$startliney = $this->y;
+								
 							}
 							if (!isset($dom[$key]['line-height'])) {
 								$dom[$key]['line-height'] = $this->cell_height_ratio;
@@ -18049,6 +18067,7 @@ Putting 1 is equivalent to putting 0 and calling Ln() just after. Default value:
 						// reset column counter
 						$colid = 0;
 					}
+					
 					// table cell
 					if (($dom[$key]['value'] == 'td') OR ($dom[$key]['value'] == 'th')) {
 						$trid = $dom[$key]['parent'];
@@ -21332,7 +21351,7 @@ Putting 1 is equivalent to putting 0 and calling Ln() just after. Default value:
 				$current_page = $this->page;
 				$current_column = $this->current_column;
 			}
-			$this->SetX($x_start);
+			$this->SetX($x_start+35);
 			$indent = ($spacer * $outline['l']);
 			if ($this->rtl) {
 				$this->x -= $indent;
